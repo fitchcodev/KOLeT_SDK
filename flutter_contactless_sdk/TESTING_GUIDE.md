@@ -1,42 +1,89 @@
-# Local Testing Guide (Android)
-
-Follow these steps to test the Contactless SDK on your physical Android device.
-
-## 1. Prerequisites
-- **Physical Android Phone**: With NFC hardware.
-- **Enable NFC**: Go to Settings -> Connected Devices -> Connection Preferences -> NFC (Enable).
-- **Developer Options**: Enable "USB Debugging" on your phone.
-- **Connect**: Connect your phone to your PC via USB and run `adb devices` to verify connection.
-
-## 2. Setup the Example App
-Since we manually created the project structure, you may need to let Flutter generate some environment-specific files.
-
-Navigate to the example directory:
-```bash
-cd example
-```
-
-Run Flutter clean and get dependencies:
-```bash
-flutter clean
-flutter pub get
-```
-
-## 3. Run the App
-With your phone connected, run the following command:
-```bash
-flutter run
-```
-
-## 4. Test Native Features
-Once the app is running:
-1. The screen will show if **NFC Hardware** is detected.
-2. Tap **"Start Payment Session"**.
-3. The SDK will trigger the `startPayment` logic (currently returning a mock success with transaction details).
+# Local Testing Guide
 
 ---
 
-## Troubleshooting
-- **Gradle Errors**: If you encounter Gradle errors, ensure your `local.properties` file in `example/android/` contains the correct `flutter.sdk` path.
-- **NFC Not Found**: Ensure the phone actually has NFC hardware and it is turned ON.
-- **Permission Denied**: The Android Manifest already includes `<uses-permission android:name="android.permission.NFC" />`.
+## Android Testing
+
+### Prerequisites
+- **Physical Android Phone** with NFC hardware (no Simulator support).
+- **Enable NFC**: Settings → Connected Devices → Connection Preferences → NFC.
+- **Developer Options**: Enable "USB Debugging".
+- Connect via USB and run `adb devices` to verify.
+
+### Run the Example App
+```bash
+cd example
+flutter clean
+flutter pub get
+flutter run
+```
+
+### What to Expect
+1. The screen shows whether NFC hardware is detected.
+2. Tap **"Start Payment Session"** to trigger a real card read via `nfc_manager`.
+3. Hold an EMV card against the back of the phone.
+
+### Troubleshooting
+- **Gradle Errors**: Ensure `example/android/local.properties` contains the correct `flutter.sdk` path.
+- **NFC Not Found**: Verify the phone has NFC hardware and it is turned ON.
+- **Permission Denied**: The manifest already includes `<uses-permission android:name="android.permission.NFC" />`.
+
+---
+
+## iOS Testing
+
+### Prerequisites
+- **Physical iPhone 7 or newer** — CoreNFC does NOT work in the iOS Simulator.
+- **Apple Developer Account** with an active paid membership (required for NFC entitlement).
+- **macOS machine with Xcode 12+** to build and sign the app.
+
+### Step 1 — Enable NFC in the Apple Developer Portal
+1. Go to [developer.apple.com](https://developer.apple.com) → Certificates, Identifiers & Profiles.
+2. Select your **App ID** (or create one matching your bundle ID).
+3. Enable the **"NFC Tag Reading"** capability.
+4. Regenerate and download your provisioning profile.
+
+### Step 2 — Enable NFC Capability in Xcode
+1. Open `example/ios/Runner.xcworkspace` in Xcode.
+2. Select the **Runner** target → **Signing & Capabilities** tab.
+3. Click **"+ Capability"** and add **"Near Field Communication Tag Reading"**.
+4. Xcode will automatically link `Runner.entitlements` (already created at
+   `ios/Runner/Runner.entitlements`) and add the entitlement key.
+
+### Step 3 — Verify `Info.plist` Entries
+The following keys are already present in `ios/Runner/Info.plist` — verify they exist:
+```xml
+<key>NFCReaderUsageDescription</key>
+<string>This app uses NFC to read your EMV payment card for contactless payments.</string>
+
+<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+<array>
+    <string>A0000000041010</string>  <!-- Mastercard -->
+    <string>A0000000031010</string>  <!-- Visa -->
+    <!-- ... and more -->
+</array>
+```
+
+### Step 4 — Run the Example App on Device
+```bash
+cd example
+flutter clean
+flutter pub get
+flutter run --release   # or open Xcode and Run (⌘R)
+```
+
+### What to Expect
+1. The screen shows NFC availability (`true` on iPhone 7+).
+2. Tap **"Read Card Details"** — the native iOS NFC modal sheet appears.
+3. Hold an EMV card near the **top** of the iPhone (where the NFC antenna is).
+4. The modal closes automatically and card data (PAN, expiry, cardholder name, cryptogram) is displayed.
+
+### Troubleshooting
+| Symptom | Cause | Fix |
+|---|---|---|
+| NFC sheet never appears | Missing entitlement | Add capability in Xcode (Step 2) |
+| App crashes on NFC call | Missing `NFCReaderUsageDescription` | Add key to `Info.plist` |
+| "Unsupported card type" error | Card AID not in `Info.plist` list | Add the AID to `com.apple.developer.nfc.readersession.iso7816.select-identifiers` |
+| `NFC_UNAVAILABLE` error | Running on Simulator or iPhone 6s or older | Use a real iPhone 7 or newer |
+| Session invalidated immediately | Provisioning profile mismatch | Regenerate profile after enabling NFC in Dev Portal |
+

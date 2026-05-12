@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
 import 'src/models/payment_request.dart';
 import 'src/models/payment_result.dart';
@@ -38,10 +39,36 @@ class ContactlessSDK {
     }
   }
 
-  /// Start scanning for an EMV card and return its details
-  /// [onStatusUpdate] provides progress updates like "Reading...", "Hold your card...", etc.
+  /// Start scanning for an EMV card and return its raw details as [CardData].
+  ///
+  /// - **iOS**  → delegates to the native CoreNFC Swift implementation via the
+  ///   MethodChannel (`readCardDetails`), which opens a real
+  ///   `NFCTagReaderSession`. Requires the NFC entitlement and
+  ///   `NFCReaderUsageDescription` in `Info.plist`.
+  /// - **Android** → uses the `nfc_manager` Dart package directly via
+  ///   [EmvCardReader], which communicates with the Android NFC stack.
+  ///
+  /// [onStatusUpdate] receives progress messages while the session is active.
   static Future<CardData?> readCardDetails({Function(String)? onStatusUpdate}) async {
-    return _cardReader.readCard(onStatusUpdate: onStatusUpdate);
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        onStatusUpdate?.call('Hold your card near the top of the iPhone');
+        final Map<String, dynamic>? result =
+            await _channel.invokeMapMethod<String, dynamic>('readCardDetails');
+        if (result == null) {
+          onStatusUpdate?.call('No card data returned');
+          return null;
+        }
+        onStatusUpdate?.call('Scan Complete');
+        return CardData.fromMap(result);
+      } catch (e) {
+        onStatusUpdate?.call('Error: $e');
+        return null;
+      }
+    } else {
+      // Android: use nfc_manager Dart package via EmvCardReader
+      return _cardReader.readCard(onStatusUpdate: onStatusUpdate);
+    }
   }
 
   /// Initialize the SDK with security keys

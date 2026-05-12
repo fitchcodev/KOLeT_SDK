@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Contactless Expo App",
+    "slug": "contactless-expo-app",
+    "version": "1.0.0",
+    "sdkVersion": "49.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "plugins": [
+      "./plugins/withYogaWarningWorkaround"
+    ],
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NFCReaderUsageDescription": "This app uses NFC to read contactless payment cards."
+      },
+      "bundleIdentifier": "com.contactless.example"
+    },
+    "android": {
+      "permissions": [
+        "NFC"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.contactless.example"
+    }
+  }
+}

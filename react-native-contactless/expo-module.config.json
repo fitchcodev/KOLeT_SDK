@@ -1,0 +1,10 @@
+{
+  "name": "contactless-expo-app",
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["ContactlessSDK"]
+  },
+  "android": {
+    "modules": ["expo.modules.contactless.ContactlessSDKModule"]
+  }
+}
